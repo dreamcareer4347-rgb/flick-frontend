@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Smartphone, Shield, QrCode, ArrowRight, Zap } from 'lucide-react';
+import { Smartphone, Shield, QrCode, ArrowRight, Zap, Camera, X } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
   const [sessionIdInput, setSessionIdInput] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const videoRef = useRef(null);
+  const [cameraError, setCameraError] = useState('');
 
   const handleJoinRemote = (e) => {
     e.preventDefault();
@@ -14,6 +17,36 @@ export default function Home() {
       router.push(`/remote/${sessionIdInput.trim()}`);
     }
   };
+
+  // Camera start karne ka function QR scan ke liye
+  const startCamera = async () => {
+    setIsScanning(true);
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setCameraError('Camera access nahi mil paya. Kripya permission check karein ya Session ID enter karein.');
+      setIsScanning(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setIsScanning(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
@@ -53,23 +86,53 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md justify-center mb-12">
           <button
             onClick={() => router.push('/presenter/new')}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-8 py-4 rounded-2xl shadow-2xl shadow-blue-600/30 transition-all text-base flex items-center justify-center space-x-3 group"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-8 py-4 rounded-2xl shadow-2xl shadow-blue-600/30 transition-all text-base flex items-center justify-center space-x-3 group"
           >
-            <span>Launch Presenter Mode</span>
+            <span>Launch Presenter Mode (Laptop)</span>
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
 
-        {/* Quick Join Remote Box for Mobile Users */}
+        {/* Mobile User Control Card: Scan QR or Enter Session ID */}
         <div className="w-full max-w-md bg-white border border-blue-100 p-6 rounded-3xl shadow-xl shadow-blue-500/5 text-left">
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 mb-2 flex items-center space-x-2">
             <Smartphone className="w-4 h-4 text-blue-600" />
-            <span>Have a Session ID? Join as Remote</span>
+            <span>Join Presentation from Phone</span>
           </h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Agar aapke paas laptop ka session code hai, toh yahan daalkar seedha phone remote kholen:
+          <p className="text-xs text-slate-500 mb-5">
+            Laptop par dikh rahe QR code ko scan karein ya direct Session ID enter karein:
           </p>
-          <form onSubmit={handleJoinRemote} className="flex gap-2">
+
+          {/* QR Scanner Toggle Button */}
+          {!isScanning ? (
+            <button
+              onClick={startCamera}
+              className="w-full mb-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold py-3.5 px-4 rounded-2xl border border-blue-200 flex items-center justify-center space-x-2 transition-all shadow-sm"
+            >
+              <Camera className="w-5 h-5 text-blue-600" />
+              <span>Scan QR Code with Camera</span>
+            </button>
+          ) : (
+            <div className="mb-4 relative bg-slate-900 rounded-2xl overflow-hidden p-2 text-center">
+              <button
+                onClick={stopCamera}
+                className="absolute top-3 right-3 z-10 bg-white/80 hover:bg-white text-slate-900 p-1.5 rounded-full shadow"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <video ref={videoRef} autoPlay playsInline className="w-full h-48 object-cover rounded-xl" />
+              <p className="text-xs text-white/80 mt-2">Laptop screen par QR code saamne rakhein...</p>
+              {cameraError && <p className="text-xs text-rose-400 mt-1">{cameraError}</p>}
+            </div>
+          )}
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink mx-4 text-xs text-slate-400 uppercase font-bold">Ya phir Session ID dalein</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          <form onSubmit={handleJoinRemote} className="flex gap-2 mt-3">
             <input
               type="text"
               placeholder="Enter Session ID..."
