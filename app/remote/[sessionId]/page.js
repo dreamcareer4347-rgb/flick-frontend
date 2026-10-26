@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, RotateCcw, Wifi, WifiOff, Smartphone, Zap } from 'lucide-react';
 
-export default function RemotePage() {
+function RemoteContent() {
   const params = useParams();
   const sessionId = params?.sessionId;
 
@@ -111,5 +111,13 @@ export default function RemotePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function RemotePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-600 font-bold">Loading Remote...</div>}>
+      <RemoteContent />
+    </Suspense>
   );
 }
